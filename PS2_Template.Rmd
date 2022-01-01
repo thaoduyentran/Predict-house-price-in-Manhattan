@@ -1,0 +1,752 @@
+---
+title: 'Business Analytics :: PS2'
+author: "THAO DUYEN TRAN"
+output:
+  html_document: default
+  pdf_document: default
+fontsize: 11pt
+editor_options:
+  chunk_output_type: inline
+
+---
+  
+
+
+# Linear Regression 1
+```{r eval=TRUE}
+# Load the data
+ex1 <- read.csv("~/Downloads/PS2_EX1_Data Set.csv") 
+# Explore the data
+summary(ex1)
+
+# Factorize x2
+ex1$x2 = as.factor(ex1$x2)
+
+# Fit regression model 
+fit <- lm(y ~ ., ex1)
+
+# Check model fit
+summary(fit)
+
+```
+### Summarize the inferences and check the fit of the model
+Based on the model summary, x1 is not a significant predictor of y as p-value x1 = 0.35179 is larger than 0.05 significance level
+x2 is a significant predictor of y as its p-value is 0.00752 which is smaller than 0.05 significance level 
+x2TRUE has negative coefficient vs x2FALSE has positive coefficient, meaning that x2TRUE has negative relationship with y and x2FALSE has positive relationship with y
+
+This is the multiple linear regression model, the Adjusted R-Squared is 0.1502 which is small as Adjusted R-squared value is from 0 to 1. This shows that the prediction of this model is not very accurate
+
+The residual standard error: 21.73 on 37 DF tells us that the regression model predict the value of y with an average error of 21.73. Considering that values of y is ranging from -32.09956 to 61.95064 on 37DF. this residual standard error of 21.73 is relatively large. This indicates that the regression model does not fit the dataset well. 
+
+The p-value of F-statistics is 0.0186 < 0.05 significance level, meaning that we can reject the null hypothesis. We can conclude that at least one predictor of the model is significant and therefore, the model is meaningful.  
+F-statistics = 4.446 on 2 and 37DF is significant because it is larger than F-statistics value on 2 and 40DF is 2.8387 on the F-table, this also indicates that the prediction model is meaningful. 
+
+The intercept = 21.0846 means that y = 21.0846 when the model is not meaningful (x2 and x1 predictors are both insignificant). However, as we reject the null hypothesis, y will not be equal to 21.0846. The p-value of the intercept is 0.0000098 which is very small < 0.001 so it is a meaningful constant in the model. 
+
+#### Display the estimated model graphically
+```{r eval=TRUE}
+# Load ggplot 
+library(ggplot2)
+
+# Plot the estimated model
+ggplot(ex1,aes(x=x1, y=y, color =x2))+ geom_point(alpha=0.9) 
+
+# Plot the estimated model with regression line
+ggplot(ex1,aes(x=x1, y=y, color =x2))+ geom_point(alpha=0.9) +
+geom_smooth(method = 'lm')
+```
+
+The plot clearly demonstrates the positive relationship of y and x2FALSE vs the negative relationship of y and x2TRUE.
+There is no linear relationship between y and x1 that is shown apparently
+This reinforces the result of the regression model "fit" that x2 is a significant predictor of y,whereas x1 is not
+
+As the regression model does not fit the dataset well, it has a large residual standard error, the data points are more loosely scattered around the fitted regression line as the graph shown. 
+
+
+#### Make predictions for the remaining 20 data points in the file that have missing observations
+```{r eval=TRUE}
+# Make predictions
+pred = predict(fit, ex1[41:60,], type = 'response')
+pred
+```
+#### How confident do you feel about these predictions?
+Conduct model evaluation procedure
+1. Replace missing values with predicted values in y column
+```{r eval=TRUE}
+# Create a copy of ex1 dataset
+ex2 <- ex1
+# Replace missing values to ex2 
+ex2[is.na(ex2)] = pred
+```
+2. Run a new regression model for and fit on the updated dataset & make prediction for 40 known values from 1st to 40th row
+```{r eval=TRUE}
+# Fit the model on the new dataset
+fit_new = lm(y~.,ex2)
+# Check the fit of the new model 
+summary(fit_new)
+
+```
+
+P-value of F-stats is significant as 0.00003405 < 0.05 significance level
+We can reject the null hypothesis and conclude that the prediction model is meaningful and there is at least one predictor that is significant (which is x2)
+X2 still a significant predictor as its p-value is very small 0.00002559599
+Adjusted R-squared becomes better as it increases from 0.1502 to 0.2785 but 0.2785 is still insignificant. We would like the Adjusted R-squared to be more than 0.5 consider the DF is 57. Therefore, the prediction of this model is not very accurate just based on the summary of the model fit_new.  
+
+3. Using metrics to calculate errors of the model by calculate errors between predicted values and actual values in y column (1st-40th rows). Install and load the package Metrics which allows us to perform a range of evaluation techniques to evaluate this regression model.
+```{r eval=TRUE}
+# Make predictions on non-missing values in y 
+pred_new = predict(fit_new,ex2[1:40,])
+pred_new
+
+# Use metrics to evaluate the model
+library(Metrics)
+library(caTools)
+sum_squared_error <- sse(ex2[1:40,]$y,pred_new)
+sum_squared_error
+mean_squared_error <- mse(ex2[1:40,]$y,pred_new)
+mean_squared_error
+root_mean_squared_error <- rmse(ex2[1:40,]$y,pred_new)
+root_mean_squared_error
+relative_squared_error <- rse(ex2[1:40,]$y,pred_new)
+relative_squared_error
+mean_abs_error <- mae(ex2[1:40,]$y,pred_new)
+mean_abs_error
+mean_abs_deviation <- mean_abs_error/60
+mean_abs_deviation
+relative_abs_error <- rae(ex2[1:40,]$y,pred_new)
+relative_abs_error
+Y_test<- ex2[1:40,]$y
+error <- Y_test - pred_new
+R2=1-sum(error^2)/sum((Y_test- mean(Y_test))^2)
+R2
+Adj_R2 <- 1-(mean_squared_error/var(Y_test))
+Adj_R2
+```
+As sum_squared_error and mean_squared_error of predicted values versus actual values in y column are very large (17474.17 & 436.8543), adjust R-squared is also small (0.2139285), it clearly shows that the prediction model has large errors and the accuracy is low. We can't be confident about this prediction. 
+
+# Linear Regression 2
+```{r eval=TRUE}
+#Generate 1000 random data points from a normal distribution 
+var1 <- rnorm(1000,0,1)
+var2 <- rnorm(1000,0,1)
+
+# Run a regression of one variable on the other
+fit_var <- lm(var1 ~ var2)
+
+# Check model fit 
+options(scipen = 999)
+summary(fit_var)
+
+```
+#### 2.4 Is the slope coeffcient significant? Interpret and explain
+The slope coefficient is -0.008556, its p-value is 0.786 which is larger than 0.05 significance level. This means that var2 is not a significant predictor of var1. 
+
+Further, the p-value of F-statistics is 0.7864 which is larger than 0.05, we do not reject the null hypothesis. This prediction model is not meaningful. 
+
+#### 2.5 How much variation does the model explain? Why is this?
+Multiple R-squared - coefficient of determination is the proportion of variation in the response variable that can be explained by the predictor variables
+Multiple R-squared of this model is 0.00007359, which means the model can explain 0.007359% the variation in var1 based on predictor var2. It also means var2 is obviously not a predictor of var1. 
+
+The reason for this is var1 and var2 are two separate and random datasets and there is no relationship between them 
+
+# Linear Regression 3
+```{r eval=TRUE}
+```
+
+The Manhattan Housing data contains missing values indicated by "0" 
+so we are using the argument na.strings="0" to treat them as missing values
+
+#### 3.1 Summarize what you learned about the dataset overall in a few sentences
+```{r eval=TRUE}
+df <- read.csv("~/Downloads/Rolling_Sales_Manhattan_Data Set_ver4.csv") 
+str(df)
+dim(df)
+
+```
+The Manhattan Rolling Sales file lists properties that sold in Manhattan, New York City for tax class 1, 2, and 4.
+There are 15156 rows and 7 columns 
+7 columns include 
+Neighborhood : neighborhoods in Manhattan 
+TotalUnits: the number of units 
+LandSqFt: the area of land (sqft)
+GrossSqFt: the gross area (sqft)
+YearBuilt: the year in which the house was built
+TaxClass: tax class 1,2,4 
+SalePrice : sale price of the house 
+15156 rows represents 15156 houses sold
+
+
+
+#### 3.2 Analyze sales using linear regression with any predictors you feel are relevant
+```{r eval=TRUE}
+# Plot a histogram of SalePrice 
+library(ggplot2)
+ggplot(df , aes(SalePrice)) +
+geom_histogram(aes(y=..density..)) +
+geom_function(fun =dnorm,args = list(mean = mean(df$SalePrice),sd = sd(df$SalePrice)),color="red")
+
+# Data transformation 
+df$SalePrice = log(df$SalePrice)
+
+# Plot histogram of the transformed data 
+ggplot(df , aes(SalePrice)) +
+geom_histogram(aes(y=..density..)) +
+geom_function(fun =dnorm,args = list(mean = mean(df$SalePrice),sd = sd(df$SalePrice)),color="red")
+
+# Replace "0" values to NA 
+df = replace(df, df=="0", NA)
+
+# Fit the regression model 
+df$Neighborhood = as.factor(df$Neighborhood)
+df$TaxClass = as.factor(df$TaxClass)
+fit_man = lm(SalePrice~. ,df)
+summary(fit_man)
+options(scipen = 999)
+```
+#### Interpret the findings 
+P-value of F-statistics is very small, < 0.00000000000000022 so we can reject the null hypothesis and conclude that the regression model is meaningful. 
+
+TaxClassClass2, TaxClassClass4, YearBuilt, LandSqFt, GrossSqFt are significant predictors of SalePrice because their p-value are much smaller than 0.05.  
+
+Neighborhood FASHION, FINANCIAL, HARLEM-CENTREAL, HARLEM-EAST, HARLEM-UPPER, MIDTOWN-CBD, MIDTOWN-WEST, UPPER EAST SIDE(59-79) are significant predictors of SalePrice because their p-value are much smaller than 0.05
+
+TotalUnit and other Neighborhoods are not significant predictors as their p-value are larger than 0.05 significance level. 
+
+Adjusted R-squared 0.5293 is significant enough, indicating that the prediction model is generally reliable. 
+
+Residual standard error: 1.203 on 1281 degrees of freedom is small tells us that the regression model predict the value of SalePrice with an average error of 1.203. Considering that SalePrice is ranging from 11ish to 21ish after transformation, this means the model is relatively accurate and reliable. 
+
+#### Where would you recommend affordable housing in Manhattan? 
+```{r eval=TRUE}
+
+# Plot SalePrice and GrossSqFt
+ggplot(df,aes(x=GrossSqFt, y=SalePrice, color =TaxClass),na.rm= FALSE)+ geom_point(alpha=0.9) +
+geom_smooth(method = 'lm', formula = y~x)
+mean(df$GrossSqFt, na.rm=TRUE)
+
+# Plot SalePrice and YearBuilt
+ggplot(df,aes(x=YearBuilt, y=SalePrice, color =TaxClass), na.rm= FALSE)+ geom_point(alpha=0.9) +
+geom_smooth(method = 'lm', formula = y~x)
+
+# Plot SalePrice & LandSqft
+ggplot(df,aes(x=LandSqFt, y=SalePrice, color =TaxClass), na.rm= FALSE)+ geom_point(alpha=0.9) +
+geom_smooth(method = 'lm', formula = y~x)
+mean(df$LandSqFt, na.rm=TRUE)
+
+```
+Based on the three graphs, we can see that SalePrice increases as either GrossSqFt or LandSqFt increases. 
+
+The relationship between SalePrice and YearBuilt is more complicated, however, we can still see that SalePrice is higher for houses that were built later. Specifically, those that were built in 1800-1900 are sold clearly at lower price than those were built from 1900-2000. 
+
+Therefore, in order to find affordable housing in Manhattan, we should consider smaller square footage (smaller than 50316.98sqft for GrossSqFt and smaller than 7779.6sqft for LandSqFt) as well as houses that were built a long time ago, ideally before 1900s. 
+
+#### Find affordable neighborhoods 
+```{r eval=TRUE}
+# Mean & Standard Deviation of SalePrice
+mean_sale = mean(df$SalePrice)
+sd_sale = sd(df$SalePrice)
+library(dplyr)
+# Affordable housing prices are below mean and 1 standard deviation 
+affordable_price = subset(df, SalePrice <= mean_sale + sd_sale, select = 1:7)
+
+# Frequency of neighborhood in affordable_price data  
+affordable_neighborhood = as.data.frame(table(affordable_price$Neighborhood))
+
+#Desceding order to see the most popular affordable neighborhoods 
+affordable_neighborhood = affordable_neighborhood %>% arrange(desc(Freq)) 
+head(affordable_neighborhood, 10)
+
+```
+As affordable houses are sold mostly in the neighborhoods that have high frequency, this means there are many more affordable housing options in these locations compared to the rest. This also means the probability for us to find affordable houses in these most popular neighborhoods is higher than the other neighborhoods. We can look at this list to find affordable housing. Specifically, top 10 affordable neighborhoods that have the most sold houses are: 
+1 UPPER EAST SIDE	
+2	UPPER WEST SIDE (59-79)		
+3	UPPER EAST SIDE (79-96)		
+4	MIDTOWN EAST			
+5	UPPER WEST SIDE (79-96)	
+6 MIDTOWN WEST
+7	HARLEM-CENTRAL	
+8	CHELSEA			
+9	MURRAY HILL		
+10 GRAMERCY
+
+Conclusion: I would recommend consider the top 10 most affordable locations above, smaller square footage and earlier year built in order to find an ideal affordable house in Manhattan. 
+
+
+### 3.4 Justify why linear regression was appropriate to use
+
+```{r eval=TRUE}
+plot(fit_man)
+```
+
+First, the outcome variable SalePrice is continuous, which means logistics regression (best used for categorical variable) would not be appropriate. Between linear regression and non-linear regression, choosing which one is more appropriate depends mostly on whether the linear model fits adequately. 
+
+Checking the Residuals vs Fits plot, we can see that linearity seems to hold reasonably well, as the red line is close to the dashed line. This means the linear model provides an adequate fit for the dataset. Therefore, linear regression was appropriate to use. 
+
+
+### 3.5 Describe some decisions that a city planning official might make based on your analysis.
+New York City official currently provides affordable housing programs: Housing Preservation and Development (HPD) and Housing Development Corporation (HDC) Affordable Housing Lotteries and NYC Housing Connect.
+NYC Housing Connect is New Yorkers' portal to find and apply for affordable housing opportunities across the five boroughs of New York City.
+
+The city official can include affordable housing recommendations in Manhattan on NYC Housing Connect so that users can see the list of affordable housing neighborhoods. 
+
+They can also include recommendations about year built before 1900s and square footage smaller than 50316.98sqft for GrossSqFt and smaller than 7779.6sqft for LandSqFt to get affordable housing options for reference. 
+
+They can combine these information and send to email updates of registered users to announce widely
+
+They can include these recommendations on the press and website announcement so that residents in NYC can be well-informed. 
+
+They also can start start look for more developments, constructed or renovated housing in the suggested affordable neighborhoods and include them in their new listings
+
+
+# Linear Regression 4 
+### 4.1 Using linear regression, regress mpg on cylinders, weight and year
+```{r eval=TRUE}
+auto = read.csv('~/Downloads/Auto.csv')
+fit_auto = lm(mpg~cylinders + weight + year, auto)
+summary(fit_auto)
+```
+### 4.2 What can you say about the significance of the predictors in the regression in point
+Cylinders is not a significant predictor as its p-value is 0.61583 > 0.05 significance level
+
+Weight is a significant predictor as its p-value is near 0, it is < 0.0000000000000002 < 0.05 significance level
+
+Year is a significant predictor as its p-value is near 0, it is < 0.0000000000000002 < 0.05 significance level
+
+Further, p-value of F-statistics is < 0.00000000000000022 < 0.05 so we can reject the null hypothesis and conclude that the regression model is meaningful. 
+
+### 4.3 Regress cylinders on weight and year. How do you interpret your results? In answering,
+remember the linear regression anomalies discussed in class.
+```{r eval=TRUE}
+# Check multicollinearity
+fit_cyl = lm(cylinders~ weight + year, auto)
+summary(fit_cyl)
+
+# Check autocorrelation of errors - Durbin – Watson (DW) statistic
+library(car)
+durbinWatsonTest(fit_auto)
+```
+
+From the output we can see that the Durbin – Watson (DW) test statistic is 1.222733 and the corresponding p-value is 0.. Since this p-value is less than 0.05, we can reject the null hypothesis and conclude that the residuals in this regression model are autocorrelated. 
+
+```{r eval=TRUE}
+# Check Heteroskedasticity, Normal Distribution of error terms, Outliers
+plot(fit_auto)
+#perform Breusch-Pagan Test to detect Heteroskedasticity
+library(lmtest)
+bptest(fit_auto)
+```
+The model fit_cyl shows that there is a linear relationship between independent variables: cylinders, weight and year. As p-value of weight and year are both smaller than 0.05, we can reject the null hypothesis and conclude that there is linear relationship between cylinders and weight, year. This means these independent variables are correlated. This indicates that the model fit_auto has multicollinearity, 
+
+I continue to check other linear regression anomalies:correlation of errors, Heteroskedasticity, Normal Distribution of error terms
+
+In the scatter plot that shows the distribution of residuals (errors) vs fitted values (predicted values), there is a parabolic pattern, which is a sign of non-linearity in the data. It means that the model doesn’t capture non-linear effects
+
+The Normal Q_Q and Scale location plots show that there is a slight non-normal distribution of errors. 
+The Scale location plot also shows evident sign of Heteroskedasticity. Further, The test statistic of Breusch-Pagan Test is 19.063  and the corresponding p-value is 0.0002653. Since the p-value is less than 0.05, we  reject the null hypothesis. We have sufficient evidence to say that heteroscedasticity is present in the regression model.
+
+The Residuals vs Leverage plot does not show significant evidence of outliers. 
+
+### 4.4 Thinking back to point (1), in light of the results of point (3), how would you deal with the
+variable cylinders? Would you include it in the regression? If so, how?
+
+The fit_auto model comes with evident anomalies: Multicollinearity, heteroscedasticity, autocorrelation of errors, non-linear relationship 
+
+Multicollinearity reduces the precision of the estimated coefficients, which weakens the statistical power of the regression model. We can't trust the p-values to identify independent variables that are statistically significant.
+
+#### Assess the severity of multicollinearity 
+```{r eval=TRUE}
+# Testing for Multicollinearity with Variance Inflation Factors (VIF)
+vif(fit_auto)
+```
+VIF: A value of 1 indicates that there is no correlation between this independent variable and any others. VIFs between 1 and 5 suggest that there is a moderate correlation, but it is not severe enough to warrant corrective measures. VIFs greater than 5 represent critical levels of multicollinearity where the coefficients are poorly estimated, and the p-values are questionable.
+
+VIF of cyclinders and weight is 5.266873 & 5.119024 > 5 represents critical levels of multicollinearity. This means coefficients are poorly estimated, and the p-values are unreliable. The VIFs indicate that our model has severe multicollinearity for cyclinders and weight. 
+
+#### The potential solutions to deal with Multicollinearity include the following:
+
+- Center the Independent Variables by standardizing the variables to Reduce Structural Multicollinearity
+- Remove some of the highly correlated independent variables.
+- Linearly combine the independent variables, such as adding them together.
+- Perform an analysis designed for highly correlated variables, such as principal components analysis or partial least squares regression.
+- LASSO and Ridge regression are advanced forms of regression analysis that can handle multicollinearity.
+
+#### Thinking back to point (1), in light of the results of point (3), how would you deal with the
+variable cylinders?
+We can try to remove the highly correlated independent variable - remove cylinders
+```{r eval=TRUE}
+# Remove cylinders from regression model 
+fit_auto_new = lm(mpg~weight + year, auto)
+summary(fit_auto_new)
+vif(fit_auto_new)
+plot(fit_auto_new)
+```
+The new regression model without cyclinders has equivalent performance as Adjusted R-squared is pretty much the same 0.8078 vs 0.8074 in the original model. 
+VIF of the new model indicates multicollinearity is very insignificant or almost does not exist as VIF values are closed to 1. 
+
+#### Would you include cylinders in the regression? If so, how?
+As fit_auto also has non-linearity issue, To overcome the issue of non-linearity, we can do a non linear transformation of predictors such as log (X), √X or X² transform the dependent variable.
+```{r eval=TRUE}
+fit_auto_n = lm(mpg~log(cylinders) + weight + year, auto)
+summary(fit_auto_n)
+vif(fit_auto_n)
+plot(fit_auto_n)
+```
+
+The VIF table shows that multicollinearity has been reduced to be below the significance level (VIF = 5) in the new model when we transformed cylinders variable by log() function.
+The performance of the new model is equivalent and significant enough compared to the old model as Adjusted R-squared:0.808 and p-value of F-statistics is less than 0.05. 
+
+However, based on what the 4 plots show, other problems have not been improved. The good thing is heteroscedasticity, autocorrelation of errors, non-linear relationship are not very significant issues in this model. Therefore, we can either remove cylinders out of the regression model or transform it using log() function. Removing it is more preferable as VIF value is closed to 1 and multicollinearity is reduced maximum at that point. 
+
+#  Linear Regression 5
+#### 5.1 Comment the regression output, noticing that the Sig. column is reporting the p-value of
+the coefficient. What can you tell about the sign of Age’s slope?
+
+P-value of predictor Age is 0.000 which is less than 0.05, meaning that Age is a significant predictor of house price. The coefficient of Age is 14.863, meaning that Age has positive relationship with house price. Age's slope has positive linear relationship with house price, as age increases by 1 unit, house price will increase by 14.863 thousands dollars. 
+
+#### 5.2 Why do you think the model forecasts an higher price for old holiday homes? Think carefully
+about all the information you have concerning Data Island
+
+"It has been a premier touristic destination for over 80 years, and the earliest holiday homes have been built just a few steps away from the beach itself" 
+
+Since the earliest holiday homes have been built very near the beach, and Data Island is a tourist attraction, most tourists will prefer to rent or buy a holiday home near the beach to enjoy their vacation. This means demand for houses in prime location which are also earliest homes is very high, which props up the price. Therefore, price of earliest holiday homes is excessively high and these could be outliers that make the model forecast higher price for old holiday homes. 
+
+Another reason could be that the size of old house are larger, which leads to higher price. 
+
+
+#### 5.3 Assuming that more data and variables are available, what would you suggest your intern to
+do to fix their report?
+
+Based on the finding on 5.2, we can see that there is a correlation, co-occurence between house price and age. However, house price and age probably do not have causal positive relationship. More ages does not necessarily cause an increase in house price. It seems like that in the intern's model but the fact is due to the correlation between Age and Distance from the beach. In fact, causation happens between the location of the house to the beach and house price. 
+
+Therefore, I would suggest adding distance from the house to the beach, size of the house to the model because these variables would be more objective than age of the house as well as provide a more consistent linear relationship with house price. 
+
+
+
+# Support-Vector Machines
+
+#### 6.1 Look at the help page for the dataset to find out what the different columns mean
+```{r eval=TRUE}
+library('e1071')
+library('kernlab')
+data(spam)
+dim(spam)
+head(spam)
+str(spam)
+```
+Spam is a data set collected at Hewlett-Packard Labs, that classifies 4601 e-mails as spam or non-spam. In addition to this class label there are 57 variables indicating the frequency of certain words and characters in the e-mail.
+
+The first 58 variables (columns) contain the frequency of the variable name (e.g., business) in the e-mail. If the variable name starts with num (e.g., num650) the it indicates the frequency of the corresponding number (e.g., 650). The variables 49-54 indicate the frequency of the characters ‘;’, ‘(’, ‘[’, ‘!’, ‘\$’, and ‘\#’. The variables 55-57 contain the average, longest and total run-length of capital letters. Variable 58 indicates the type of the mail and is either "nonspam" or "spam", i.e. unsolicited commercial e-mail.
+
+#### 6.2 Fit a support vector classifier using svm() on the training data. type is the target and all
+other variables can be used as predictors (hint: you can use the . notation which automatically
+includes all columns of the data.frame as predictors except the target variable).
+
+```{r eval=TRUE}
+set.seed(02115)
+sample <- sample( c(TRUE, FALSE), nrow(spam), replace=TRUE)
+spam$type = as.factor(spam$type)
+train <- spam[sample,]
+test <- spam[!sample,]
+str(spam)
+# Check class distribution in train and test data 
+table(train$type)
+table(test$type)
+
+library(tidyverse)
+library(caret)
+# Fit a support vector classifier using svm() on the training data
+fit_spam <- svm(type~., train, kernel = 'linear', scale=TRUE)
+summary(fit_spam)
+# use the predict function on the test set predictors
+pred_spam = predict(fit_spam,test)
+summary(pred_spam)
+confusionMatrix(test$type, pred_spam)
+# 6.3 Calculate classification error rate & accuracy
+accuracy <- mean(test$type == pred_spam)
+accuracy
+error_rate = mean(test$type != pred_spam)
+error_rate
+# Confusion matrix 
+table(test$type, pred_spam)
+
+confusionMatrix(pred_spam, test$type)
+
+# 6.4 Now fit a support vector classifier again, but select sigmoid for the kernel and 100 as the cost parameter. What is the classification error in this scenario? What does this suggest to you? 
+fit_spam_new = svm(type~., train, kernel = 'sigmoid', cost = 100)
+summary(fit_spam_new)
+pred_spam_new = predict(fit_spam_new,test)
+#Calculate classification error rate & accuracy
+error_rate_new = mean(test$type != pred_spam_new)
+error_rate_new
+accuracy_new <- mean(test$type == pred_spam_new)
+accuracy_new
+# Confusion matrix 
+table(test$type, pred_spam_new)
+
+# Compare error rates
+table(error_rate, error_rate_new)
+
+```
+The new error rate in 6.4 is 0.1643072 compared to error rate of 0.07679108 in 6.3 
+This suggests that the default support vector machine model with SVM-Kernel : radial and cost = 1 has better performance than the one with SVM-Kernel: sigmoild and cost = 100, which results in higher accuracy and lower error rate in 6.3 model 
+
+the kernel used in training and predicting
+
+- Radial basis function (RBF) Kernel: 𝐾(𝑋,𝑌)=exp(‖𝑋−𝑌‖2/2σ2) which in simple form can be written as exp(−γ⋅‖𝑋−𝑌‖2),γ>0
+RBF uses normal curves around the data points, and sums these so that the decision boundary can be defined by a type of topology condition such as curves where the sum is above a value of 0.5.
+
+- Sigmoid Kernel: 𝐾(𝑋,𝑌)=tanh(γ⋅𝑋𝑇𝑌+𝑟) which is similar to the sigmoid function in logistic regression.
+
+This suggest that the formula of RBF Kernel works better for this dataset. 
+
+Cost is the cost of constraints violation (default: 1)—it is the ‘C’-constant of the regularization term in the Lagrange formulation
+The cost parameter decides how much an SVM should be allowed to “bend” with the data. For a low cost, we aim for a smooth decision surface, which allows more space for error as the penalty is low. For a higher cost, the penalty for misclassifying points is very high, so the decision boundary will perfectly separate the data if possible, which results in higher error rate as the penalty is stricter. Cost is also simply referred to as the cost of misclassification. 
+
+Therefore, we can conclude that SVM effectiveness depends upon how you choose the basic 3 requirements: Selection of Kernel, Kernel Parameters, Soft Margin Parameter C (cost) in such a way that it maximises your efficiency, reduces error and overfitting. We have to test different models, changing these criterias to test which one is more effective as this will be specific for different dataset and purpose of the model. 
+
+#### 6.5 How easy is it to interpret the classification performed using svm? Compare the interpretability
+of the svm model to that of a regression model (e.g., like the one from the question above)
+```{r eval=TRUE}
+summary(fit_spam)
+
+```
+
+The classification perfomred using SVM is easy to interpret using confusion matrix, classification error, accuracy, sensitivity and specficity metrics. 
+
+In regression model, it is necessary to understand the coefficients, R squared metrics and the error metrics like Mean Error, Mean Squared Error (MSE), RMSE Root Mean Square Error, MAPE Mean Absolute Percentage Error, F-statistics and p-value. In addition, we have to also check if there are any linearity anomalies in regression model to make sure that predictors are truly significant as the p-values show. 
+
+On the one hand, for SM model, the confusion matrix gives a clear picture about the number observations that are correctly or wrongly classified. Hence it is less demanding and easier to interpret SVM model. Plus, SVM also provides higher accuracy for classification.
+
+On the other hand, while it's true that SVM may come with higher accuracy, Logistics Regression (LR) is much more than just a "classifier" (if we may call it such at all since it predicts a proportion rather than a class). In short, due to the complexity of its statistical interpretation, LR is a parametric/probabilistic method, which produces an inferential and highly interpretable statistical model and, on top of interpretability, it may be used in prediction under certain conditions.
+
+On the other hand, SVM is nonparametric and non-interpretable, and it would be useless in a scenario where we care to explain the behaviour and interactions of variables rather than just finding patterns for prediction.
+
+That said, while there are many alternatives to the predictive accuracy of SVM, I can't think of many to the inferential power of LR.
+
+
+#### 6.6 (Optional for bonus points) Perform 10 fold cross validation, either writing your own function or using the tune() function to find the best hyper parameter
+```{r eval=TRUE}
+# Check class balance
+hist(as.numeric(spam$type),col="coral")
+prop.table(table(spam$type))
+table(spam$type)/nrow(spam)
+```
+This plot shows that our dataset slightly imbalanced but still good enough. It has a 60:40 ratio so it is good enough. If the dataset has more than 60% of the data in one class. In that case, we can use SMOTE to handle an imbalanced dataset.
+```{r eval=TRUE}
+# The k-Fold 
+set.seed(100)
+# Perform 10 fold cross validation
+trctrl <- trainControl(method = "cv", number = 10, savePredictions=TRUE)
+nb_fit <- train(factor(type) ~., data = spam, method = "naive_bayes", trControl=trctrl, tuneLength = 0)
+nb_fit
+# We can determine that our model is performing well on each fold by looking at each fold’s accuracy
+pred <- nb_fit$pred
+pred$equal <- ifelse(pred$pred == pred$obs, 1,0)
+
+eachfold <- pred %>%                                        
+  group_by(Resample) %>%                         
+  summarise_at(vars(equal),                     
+               list(Accuracy = mean))              
+eachfold
+
+# use the boxplot to represent our accuracies
+ggplot(data=eachfold, aes(x=Resample, y=Accuracy, group=1)) +
+geom_boxplot(color="maroon") +
+geom_point() +
+theme_minimal()
+```
+In the k-fold validation method using Bayes Naives, fold 6 has the highest accuracy (the best hyper parameter) which is 67.32%
+We can see that each of the folds achieves an accuracy that is not much different from one another. The lowest accuracy is 62.39%, and also in the boxplot, we do not see any outliers. Meaning that our model was performing well across the k-fold cross-validation.
+
+Try hyperameters in Support Vector Machines (SVM)
+```{r eval=TRUE}
+###  Another method
+#Set up cross-validation:
+library(caret)
+library(tictoc)
+library(lattice)
+
+# Hyperparameters in Support Vector Machines (SVM)
+fitControl <- trainControl(method = "repeatedcv", number = 10)
+tic()
+set.seed(42)
+svm_model <- train(type ~ ., data = train ,method = "svmPoly", trControl = fitControl, verbose= FALSE)
+toc()
+svm_model
+
+# Manual hyperparameter tuning in caret
+hyperparams <- expand.grid(degree = 4, scale = 1, C = 1)
+hyperparams
+svm_model_2 <- train(type ~ ., data = train, method = "svmPoly", trControl = fitControl, tuneGrid = hyperparams, verbose = FALSE)
+toc()
+svm_model_2
+
+expand_grid(kernel=c('linear','sig'))
+
+# Use tune
+install.packages('tune')
+library('tune')
+tc = tune.control(cross = 10)
+tc = tune.control(sampling ='fix') # one split for training/validation set, faster 
+ranges = list(gamma = 2^(-1:1), cost = 2^(2:4), 
+              kernel = c('linear','radial', 'sigmoid'))
+tune.obj = tune(svm, type~., data = spam, ranges = ranges, tunecontrol = tc)
+tune.obj 
+```
+
+
+The second method using SVM (svmPoly) formula svm_model contains accross 10 fold resampling has the best hyperparameters of 93.4% compared to 87.58% in Svm_model_2 accuracy.
+
+We can conclude svm_model is the best 10 k-fold cross validation model. 
+
+
+# Clustering & PCA 
+```{r eval=TRUE}
+#Load data 
+customers = read.csv('~/Downloads/Mall_Customers.csv')
+summary(customers)
+# Change name of 2 variables
+names(customers)[4] <- paste('AnnualIncome')
+names(customers)[5] <- paste('SpendingScore')
+customers$Gender = as.factor(customers$Gender)
+# Ignore customer ID since it does not have any relationship with other variables
+customers <- customers[,2:5]
+summary(customers)
+
+# Plot to see relationship among variables
+library(ggplot2)
+ggplot(customers) +
+  geom_point(aes(x = Age, y = AnnualIncome, col = Gender)) 
+ggplot(customers) +
+  geom_point(aes(x = Age, y = SpendingScore, col = Gender))
+ggplot(customers) +
+  geom_point(aes(x = AnnualIncome, y = SpendingScore, col = Gender))
+```
+The first plot shows that the highest income are obtained by people who age from 30 to 50. 
+The second plot demonstrates all the huge spenders are less than 40 years old. Customers above that age have the highest values of Spending Score are around 60 points. 
+The last plot shows that observations tend to classify themselves in a couple of areas on the graph. There is a numerous group right in the middle and a few groups in the corners of the plot. Gender seems to have little effect when income and spending of customers is analysed.
+
+#### 7.1 Perform k-means clustering on the dataset
+Based on the above graphs, we found out that two variables: AnnualIncome and SpendingScore are the ones that influence consumer behaviour the most. Therefore the clusters will be generated only on the basis of these two variables.
+
+
+
+```{r eval=TRUE}
+# Define the most optimal numbers of clusters
+library(ClusterR)
+
+opt <- Optimal_Clusters_KMeans(customers[, 3:4], max_clusters = 10, plot_clusters = T)
+
+# Use another method to define optimal number of clusters
+opt <- Optimal_Clusters_KMeans(customers[, 3:4], max_clusters = 10, plot_clusters = T, criterion = 'silhouette')
+```
+The highest average sillhoute value (equal to 0.54) is present for k = 5. Therefore we should opt for 5 clusters in our further analysis with k-means algorithm.
+
+```{r eval=TRUE}
+set.seed(22)
+# Perform k-means clustering on the dataset
+km <- kmeans(customers[,3:4], 5)
+customers$ClusterNumber <- km$cluster
+km
+summary(km)
+# Plot your results
+ggplot(customers[,3:5])  +
+  geom_point(aes(x = AnnualIncome, y = SpendingScore, col = as.factor(ClusterNumber))) +
+  scale_color_discrete(name="Cluster Number")
+
+```
+
+
+#### 7.2 Repeat the exercise from (1) using different numbers of clusters k between {1, ..., 10}.
+For each result, extract the within-cluster sum of squares using ...$tot.withinss. Create a
+scree plot (i.e., plot the sum of squares against the number of clusters) to identify the ideal
+number of clusters. How many clusters do you suggest we should use to group our customers?
+```{r eval=TRUE}
+set.seed(1)
+# Create an empty vector
+wss = 0 
+
+# Use for loop to aggregate the sum of squares for 1 - 10 cluster centers
+for(i in 1:10) {
+  km.out <- kmeans(customers[,3:4], centers = i , nstart=1)
+    #Save total within sum of squares to wss variable
+     wss[i] = km.out$tot.withinss
+    # For each clusters k from 1 to 10, extract the within-cluster sum of squares
+    print(wss[i])}
+
+# Plot a scree plot shows the total within sum of squares vs. number of clusters
+qplot(1:10, wss) + geom_point() +
+  geom_line() + 
+  xlab("Number of Clusters") + 
+  ylab("Within-cluster Sum of Squares") +
+  ggtitle("Scree Plot") 
+
+# Set k equal to the number of clusters corresponding to the elbow location
+k = 5 
+```
+
+The ideal number of clusters is the one that is located at the elbow location, which is 5. 
+
+Same results as we determined the most optimal number of cluster using silhouette method in 7.1, the result here is consistent. Therefore, I would highly suggest using 5 clusters to group customers. 
+
+#### 7.3 In order to visualize clusters, we must reduce the dimensionality of the data. Use principal
+component analysis to generate two variables out of the four present in the dataset (ignore
+customer id as a variable). Find a suitable name for the variables you have generated
+```{r eval=TRUE}
+#Perform Principal Component Analysis
+str(customers)
+customers$Gender = as.numeric(customers$Gender)
+pcclust<-prcomp(customers[, 1:4], scale=FALSE)
+
+#Checking the summary of the PCA model
+summary(pcclust)
+biplot(pcclust)
+
+# Applying the PCA model on the data
+pcclust$rotation[, 1:2]
+
+```
+Results from the PCA show that components 1 and 2 (PC1 and PC2) contribute the most variance to the data. The high correlation between PC1 and spending score (-0.786) and PC2 and annual income (0.808) show that annual income and spending income are the 2 major components of the data.
+
+These newly generated variables from PCA have got the new names in 7.1 which are AnnualIncome and SpendingScore. 
+
+
+#### 7.4 Identify the clusters made up of the most valuable consumers.
+#### Plot the customer segments based on results from the cluster analysis and PCA.
+```{r eval=TRUE}
+# Set seed to 1
+set.seed(1)
+
+#Create a plot of the customers segments
+ggplot(customers, aes(x = AnnualIncome , y = SpendingScore)) + 
+  geom_point(stat = "identity", aes(color = as.factor(km$cluster))) +
+  scale_color_discrete(name = " ", 
+                       breaks=c("1", "2", "3", "4", "5"),
+                       labels=c("Cluster 1", "Cluster 2", "Cluster 3", 
+                                "Cluster 4", "Cluster 5")) +
+  ggtitle("Segments of Mall Customers", 
+          subtitle = "Using K-means Clustering")
+
+
+#Create a more informative plot of the customers segments
+library(ggplot2)
+ggplot(customers, aes(x = AnnualIncome , y = SpendingScore)) + 
+  geom_point(stat = "identity", aes(color = as.factor(km$cluster))) +
+  scale_color_discrete(name = " ", 
+                       breaks=c("1", "2", "3", "4", "5"),
+                       labels=c("High Income, Low Spending", "Medium Income, Medium Spending", "Low Income, Low Spending", "Low Income, High Spending","High Income, High Spending")) +
+  labs(x="Annual Income", y="Spending Score") +
+  ggtitle("Segments of Mall X Customers", 
+          subtitle = "Using K-means Clustering")
+library(InformationValue)
+confusionMatrix(pred_spam, test$type)
+
+pred
+
+```
+
+As the graph shown, the clusters that made up for the most valuable customers are Cluster 4,5 or the Segments "Low Income, High Spending" and "High Income, High Spending" as High Spending contributes to better revenue and profit for the business. 
+```{r eval=TRUE}
+tinytex::install_tinytex()
+max_print_line = 10000
+```
